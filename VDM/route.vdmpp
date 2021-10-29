@@ -1,0 +1,43 @@
+class route 
+
+instance variables
+    public stations: seq of station;
+    inv route_inv(stations);
+
+operations 
+    public route: seq of station ==> route
+    route(s) == 
+    ( 
+        stations := s; 
+    )
+    pre route_inv(s);
+
+    pure public get_stations: () ==> seq of stations 
+    get_stations() ==
+        return stations; 
+
+    pure public get_station_by_id: station`station_id ==> station 
+    get_station_by_id(id) == 
+    (
+        return station(id) 
+    )
+    pre id in set elems station; 
+
+    pure public get_station_by_index: nat ==> station 
+    get_station_by_index(index) ==
+    (
+        return stations(index)
+    )
+    pre index in set inds stations; 
+
+    -- Ensure that all stations in route are connected. 
+    -- Loop through stations and check that tracks are connected. 
+    -- If the next station's track have same reference, they must share a connection. 
+    pure route_inv: seq of station ==> bool 
+    route_inv(seq_st) == 
+        let i in set inds seq_st be st i < len seq_st 
+        in
+            return exists tr in set seq_st(i).get_tracks() inter seq_st(i+1).get_tracks()
+                &  tr <> {}     
+
+end route 

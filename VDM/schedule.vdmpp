@@ -1,0 +1,42 @@
+class schedule 
+
+instance variables
+    public schedule_actions: seq of action;
+    public schedule_route : route; 
+    inv schedule_inv(actions, r_map); 
+
+types 
+   public action = <ADVANCE> | <SIGNAL> | <WAIT_FOR_SIGNAL> | <FINAL>; 
+
+operations
+    public schedule: seq of action * route ==> schedule
+    schedule(actions, route) == 
+    (
+        atomic
+        (
+            schedule_actions := actions; 
+            schedule_route := route;
+        ) 
+    )
+    pre schedule_inv(actions, route);
+
+    pure public get_actions: () ==> seq of action
+    get_actions() == 
+        return actions; 
+
+    pure public destination_part_of_schedule: () ==> bool 
+    destination_part_of_schedule() == 
+    (
+        return schedule_actions(len schedule_actions) = <FINAL> 
+    );
+
+    -- Schedule should not advance more than tracks/connections in route map. 
+    pure schedule_inv: seq of action * route ==> bool 
+    schedule_inv(act, r_m) == 
+        return len [a | a in seq act & a = <ADVANCE>] = len schedule_route.get_stations(); 
+
+
+    -- TODO: Adaptive scheduling based on missing signal for given cycle? 
+    --      It should 'delay' schedule until signal is recieved. 
+    --      Might be train class that should be responsible. 
+end schedule 

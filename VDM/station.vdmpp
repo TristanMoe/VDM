@@ -1,0 +1,45 @@
+class station 
+
+instance variables
+    public id: station_id; 
+    -- IMPORTANT THAT TRACKS ARE BY REFERENCE! ¨
+    -- This also means one could add additional tracks to same station. 
+    public connected_tracks: set of track;
+    inv station_inv(id, connected_tracks); 
+
+types 
+    public station_id = nat; 
+
+operations
+    public station: station_id * set of track ==> station 
+    station(i_d, c_t) == 
+    (
+        atomic (
+            id := i_d; 
+            connected_tracks := c_t; 
+        )
+    )
+    pre station_inv(i_d, c_t); 
+
+    pure public get_tracks: () ==> set of track 
+    get_tracks() == 
+        return connected_tracks;  
+
+    pure public get_id: () ==> station_id
+    get_id() == 
+        return id; 
+
+    pure public get_tracks_to_station: station_id ==> set of track 
+    get_tracks_to_station(id) == 
+    (
+        return {tr | tr in set connected_tracks & tr.includes_station(id)}
+    )
+    pre exists tr in set connected_tracks & tr.includes_station(id); 
+
+functions
+    -- Ensure that all tracks are connected to station.
+    station_inv: station_id * set of track -> bool
+    station_inv(id, c_t) ==
+        forall tr in set c_t & id in set tr.get_connected_stations(); 
+
+end station 

@@ -1,0 +1,50 @@
+class track
+
+instance variables 
+    is_occupied: bool := false; 
+    used_by_train: train := nil; 
+    public station_one: station`station_id; 
+    public station_two: station`station_id;
+    inv track_inv(station_one, station_two); 
+
+operations 
+    public track: station`station_id * station`station_id ==> track
+    track(s1, s2) == 
+    (
+        atomic (
+        station_one := s1;
+        station_two := s2; 
+        );
+    )
+    pre track_inv(s1, s2);
+
+    pure public get_connected_stations: () ==> set of stations 
+    get_connected_stations() == 
+        return {statione_one, station_two}; 
+
+    pure public includes_station: station`station_id ==> bool 
+    includes_station(id) == 
+        return station_one = id or station_two = id; 
+
+    public occupy_track: train ==> ()
+    occupy_track(tr) == 
+    (
+        is_occupied := true; 
+        train := train; 
+    )
+    pre is_occupied = false and used_by_train = nil; 
+
+    public vacant_track: () ==> () 
+    vacant_track() == 
+    (
+        is_occupied := false; 
+        train := nil; 
+    )
+    pre is_occupied = true and used_by_train <> nil; 
+
+functions 
+    track_inv: station`station_id * station`station_id -> bool 
+    track_inv(s1, s2) == 
+        s1 <> s2;
+
+end track 
