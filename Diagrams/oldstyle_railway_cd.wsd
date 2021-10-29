@@ -1,0 +1,41 @@
+@startuml
+skinparam Monochrome true
+skinparam Shadowing false
+class Train {}
+
+class Track {
+    + Train 
+}
+
+class Station {
+    + Trains[]
+    + Tracks[]
+}
+
+class Signal {
+    + ShowFlag() 
+} 
+
+class Schedule {
+    + Actions[]
+} 
+
+class RouteMap {
+    + Route[]
+}
+
+class Timetable {
+    + generateTimetable()
+} 
+
+Station --o Train 
+Station --* Track 
+Train --* Signal
+Train --* Schedule
+RouteMap -> Train
+Timetable -> RouteMap
+Timetable -> Schedule
+
+
+
+@enduml

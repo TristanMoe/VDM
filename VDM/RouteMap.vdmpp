@@ -1,0 +1,284 @@
+-- A route for a given train. 
+-- Holstebro (0) -> Vemb (1) -> Struer (2) ... Thyborøn (8). 
+class route
+
+instance variables
+    public locomote_point_points: seq of locomote_point;
+    public stations: set of station;
+    inv route_inv(locomote_point_points, stations);
+
+operations 
+    public route: seq of locomote_point * set of station ==> route
+    route(l_points, s) == 
+    ( 
+        locomote_point_points := l_points; 
+        stations := s; 
+    )
+    pre route_inv(l_points, s);
+
+    public pop_point: () ==> locomote_point
+    pop_point() == 
+    (
+        dcl pop_point: locomote_point := hd locomote_point_points; 
+        locomote_point_points := tl locomote_point_points; 
+        return pop_point;
+    )
+    pre len locomote_point_points > 0;
+
+    pure public get_points: () ==> seq of locomote_point 
+    get_points() == 
+    (
+        return locomote_point_points; 
+    ); 
+
+    pure public get_point: nat ==> locomote_point 
+    get_point(index) == 
+    (
+        return locomote_point_points(index)
+    )
+    -- TODO: Check this.
+    pre len locomote_point_points > index - 1;
+
+    -- Ensure that locomotion points are correct in regards to possible station connections. 
+    -- Take point in set of points.
+    -- Find associated departure station and check that destination is connected to said departure station.
+    -- TODO: Make first statement into function? 
+    pure route_inv: seq of locomote_point * set of station ==> bool 
+    route_inv(l_points, stat) ==  
+        return (forall l_p in seq l_points 
+        & let dep_station in set stat be st dep_station.get_id() = l_p.get_departure_id() 
+            in 
+                l_p.get_destination_id() in set dep_station.get_connections()) 
+        and check_connections(l_points);
+
+    -- Then check that each point is connected correctly, i.e. they may be correct individually, but not in connection 
+    -- fx point(1, 2) to point(3->4) is NOT valid as 2 never reached station 3. 
+    -- TODO: Use recursion? 
+    pure check_connections: seq of locomote_point ==> bool 
+    check_connections(l_points) == 
+    (
+        dcl check: bool := true; 
+        for i = 1 to (len l_points - 1) do 
+            if l_points(i).get_destination_id() <> l_points(i + 1).get_departure_id()
+            then check := false;  
+        return check; 
+    )
+ 
+end route
+
+-- A station with connected stations 
+-- i.e. Holstebro (0) is connected to Vemb (1), Struer (2), Herning (3) 
+class station 
+
+instance variables
+    public id: station_id; 
+    public connected_stations: connections;
+    inv station_inv(id, connected_stations); 
+
+types 
+    public station_id = nat; 
+    public connections = set of station_id
+
+operations
+    public station: station_id * connections ==> station 
+    station(i_d, c_s_map) == 
+    (
+        atomic (
+            id := i_d; 
+            connected_stations := c_s_map; 
+        )
+    )
+    pre station_inv(i_d, c_s_map); 
+
+    pure public get_connections: () ==> connections
+    get_connections() == 
+        return connected_stations; 
+
+    pure public get_id: () ==> station_id
+    get_id() == 
+        return id; 
+
+functions
+    -- Ensure that station is not a reference to itself.
+    station_inv: station_id * connections -> bool
+    station_inv(id, c_s) ==
+        not id in set c_s;
+
+end station 
+
+
+-- Departure and destination point.
+-- Holstebro (0) -> Vemb (1). 
+class locomote_point 
+
+instance variables 
+    public departure_station_id: station`station_id; 
+    public destination_station_id: station`station_id; 
+    inv track_inv(departure_station_id, destination_station_id); 
+
+operations 
+    public locomote_point: station`station_id * station`station_id ==> locomote_point
+    locomote_point(depart_id, destination_id) == 
+    (
+        atomic (
+        departure_station_id := depart_id;
+        destination_station_id := destination_id; 
+        );
+    )
+    pre track_inv(depart_id, destination_id);
+
+    pure public get_departure_id: () ==> station`station_id 
+    get_departure_id() == return departure_station_id; 
+
+    pure public get_destination_id: () ==> station`station_id 
+    get_destination_id() == return destination_station_id; 
+
+functions 
+    track_inv: nat * nat -> bool 
+    track_inv(depart_id, destination_id) == 
+        depart_id <> destination_id;
+
+end locomote_point
+
+-- Train schedule.
+-- Advance = Traverse between two stations
+-- Signal = Signal waiting train that next cycle it may leave station.
+-- Wait for signal = Wait for signal from leading train. 
+class schedule
+
+instance variables
+    public actions: seq of action;
+    public r_map : route; 
+    inv schedule_inv(actions, r_map); 
+
+types 
+   public action = <ADVANCE> | <SIGNAL> | <WAIT_FOR_SIGNAL> | <FINAL>; 
+
+
+operations
+    public schedule: seq of action * route ==> schedule
+    schedule(act, r_m) == 
+    (
+        atomic
+        (
+            actions := act; 
+            r_map := r_m;
+        ) 
+    )
+    pre schedule_inv(act, r_map);
+
+    pure public get_actions: () ==> seq of action
+    get_actions() == 
+        return actions; 
+ 
+    -- Schedule should not advance more than tracks/connections in route map. 
+    pure schedule_inv: seq of action * route ==> bool 
+    schedule_inv(act, r_m) == 
+        return len [a | a in seq act & a = <ADVANCE>] = len r_m.get_points(); 
+
+    -- TODO: Adaptive scheduling based on missing signal for given cycle? 
+    --      It should 'delay' schedule until signal is recieved. 
+    --      Might be train class that should be responsible. 
+
+end schedule 
+
+class train 
+
+instance variables
+    public id: train_id; 
+    public route: route; 
+    schedule: [schedule] := nil;
+
+types 
+    public train_id = nat; 
+
+operations
+    -- TODO: Some invariant on properties? 
+    public train: train_id * route ==> train 
+    train(i_d, r) == 
+    (
+        id := i_d; 
+        route := r; 
+    );
+
+    public assign_schedule: schedule ==> () 
+    assign_schedule(sc) == 
+        schedule := sc; 
+
+    -- TODO: Run function that steps over each cycle. 
+    --      Pop from seq for each advance etc. 
+end train 
+
+
+class timetable
+
+instance variables
+    train_to_route_map: train_route_map; 
+    train_to_schedule_map: schedule_map := { |-> };
+
+types 
+    public train_route_map = map train`train_id to route;
+    public schedule_map = map train`train_id to schedule;
+    public cycle_map = inmap train`train_id to locomote_point;
+
+operations
+    public timetable: map train`train_id to route ==> timetable
+    timetable(r_m) == 
+    (
+        train_to_route_map := r_m; 
+    ); 
+
+    -- Input is all the trains' routes. 
+    -- Output is a schedule for each train that fulfills requirements. 
+    -- Schedule are made of cycles, where a train can ADVANCE; WAIT or SIGNAL.
+    -- It must create cycles that avoid collisions and ensure trains reach their destination.
+    -- Loop through routes - if meeting point is detected 
+    --      add WAIT and SIGNAL actions respectively to the associated trains.
+    -- Then continue with previous cycle iteration (the meeting point trains will be 'delayed').
+    public generate_schedules: () ==> schedule_map
+    generate_schedules() == 
+    ( 
+        dcl action_list: map train`train_id to seq of schedule`action := {|->}; 
+
+        -- Continue to create schedules till all trains have reached destination. 
+        while (forall s_a in set rng action_list & s_a(len s_a) <> <FINAL>) do 
+        (
+            dcl cycle_points: cycle_map := get_next_points(train_to_route_map);
+            dcl train_collisions : set of train`train_id := check_collision_for_cycle(cycle_points);
+
+            -- .. Still working on it.                 
+        ); 
+
+        return {|->};        
+        
+    );
+
+
+functions 
+    -- Get points mapped to train for the given cycle. 
+    -- Create new map where id |-> cycle point.
+    get_next_points: train_route_map -> cycle_map
+    get_next_points(t_r_map) == 
+    (
+        {t_id |-> hd t_r_map(t_id).get_points()  | t_id in set dom t_r_map}
+    );
+
+    -- Check for collision/meeting points in cycle. 
+    check_collision_for_cycle: cycle_map -> set of train`train_id
+    check_collision_for_cycle(c_m) == 
+    (
+        dinter { {(inverse c_m)(l1), (inverse c_m)(l2)} | l1, l2 in set rng c_m & l1 <> l2 => check_collision(l1, l2)}
+    ); 
+
+    -- Collions happen when: 
+    --      1. T1 has same departure and destination as T2 in given cycle
+    --      2. T1 departure is equal to T2 destination in given cycle. 
+    -- Locomote_point contain departure and destination (i.e. direction).
+    check_collision: locomote_point * locomote_point -> bool 
+    check_collision(l1, l2) == 
+    (  
+            (l1.get_departure_id() = l2.get_departure_id() and l1.get_destination_id() = l2.get_destination_id()) or
+            (l1.get_departure_id() = l2.get_destination_id())
+    ); 
+
+end timetable 

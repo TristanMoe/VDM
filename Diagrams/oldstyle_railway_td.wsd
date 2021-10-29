@@ -1,0 +1,28 @@
+@startuml
+clock clk with period 1
+concise "Train 1" as T1 
+concise "Train 2" as T2 
+
+@0
+T1 is A 
+T2 is A 
+
+@1
+T2 -> T1 : WAIT 
+T1 is SIGNAL 
+T2 is X 
+
+@2 
+T1 -> T2 : SIGNAL
+T1 is B 
+T2 is X 
+
+@3 
+T1 is C 
+T2 is B 
+
+@4
+T2@4 <-> @3 : {1 Cycle Delay}
+T1 is C 
+T2 is C 
+@enduml
