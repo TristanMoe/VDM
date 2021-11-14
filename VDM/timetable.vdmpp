@@ -1,51 +1,114 @@
 class timetable 
 
 instance variables
+    -- Make train_to_route_map local reference, as route uses pop actions. 
     train_to_route_map: train_route_map;
     public train_to_schedule_map: schedule_map := {|->}; 
+    inv train_to_route_map_inv(train_to_route_map); 
     
 types 
+    -- First station in route must be equal to domain value.
     public train_route_map = map train`train_id to route;
     public schedule_map = map train`train_id to schedule;
-    public cycle_map = inmap train`train_id to station;
+    public next_track_map = map train`train_id to seq of track;
 
 operations
     public timetable: train_route_map ==> timetable
     timetable(t_r_map) == 
     (
         train_to_route_map := t_r_map; 
+        for all t_id in set dom t_r_map do 
+        (
+            train_to_schedule_map := train_to_schedule_map munion { t_id |-> new schedule(t_r_map(t_id)) };
+        );
     ); 
 
     -- Input is all the trains' routes. 
     -- Output is a schedule for each train that fulfills requirements. 
     -- Schedule are made of cycles, where a train can ADVANCE OR WAIT. 
     -- It must create cycles that avoid collisions and ensure trains reach their destination.
+    -- Collisions occurs if two trains try to occupy the same track in a cycle. 
     public generate_schedules: () ==> schedule_map
     generate_schedules() == 
     (
-        dcl cycle: nat := 0; 
-        while exists sch in set dom schedule_map & sch.destination_part_of_schedule() = false
+        while exists sch in set rng train_to_schedule_map & not sch.destination_part_of_schedule()
         do 
         (
-            dcl c_m: cycle_map := get_cycle_map(cycle, train_route_map);
+            dcl n_t_map: next_track_map := get_next_track_map(train_to_route_map);
+            -- Used to make all tracks vacant after each loop. 
+            dcl occupancy_map: inmap train`train_id to track := {|->};  
 
-            for all t_id in set dom train_route_map
+            for all t_id in set dom train_to_route_map 
             do 
-            (
-                if c_m(t_id) -- Think a little about. 
+            (   
+                -- Find track that advances to next station in route. 
+                -- Station can have several tracks connected to same station.
+                -- Find first available and occupy.  
+                -- If no available tracks, wait for next iteration. 
+                if exists tr in seq n_t_map(t_id) & not tr.is_occupied
+                then 
+                    (
+                        def available_tracks: set of track = { tr | tr in seq n_t_map(t_id) & not tr.is_occupied }
+                            in 
+                            (
+                                -- Add advance action, advance in route map and occupy track
+                                train_to_schedule_map(t_id).push_action(<ADVANCE>);
+                                train_to_route_map(t_id).pop_station(); 
+
+                                if train_to_route_map(t_id).get_next() = nil 
+                                    then (
+                                        train_to_schedule_map(t_id).push_action(<FINAL>);
+                                        -- Remove train from train_route_map 
+                                        train_to_route_map := {t_id} <-: train_to_route_map
+                                    );
+
+                                let tr in set available_tracks 
+                                    in 
+                                    (
+                                        tr.occupy_track(t_id); 
+                                        occupancy_map := occupancy_map munion {t_id |-> tr}; 
+                                    )
+                            ); 
+                    )
+                else 
+                    train_to_schedule_map(t_id).push_action(<WAIT>);
             ); 
 
-            cycle := cycle + 1; 
-        ); 
+            -- Make all tracks vacant again. 
+            let t_id in set dom occupancy_map 
+                in 
+                    occupancy_map(t_id).vacant_track(t_id); 
+        );         
+
+        return train_to_schedule_map; 
+    ); 
+ 
+    -- Return tracks that will allow the train to proceed to next station. 
+    pure get_next_track_map: train_route_map ==> next_track_map
+    get_next_track_map(t_r_map) == 
+    (
+        return {t_id |-> 
+            set_2_seq_tracks( {tr | tr in set t_r_map(t_id).get_next().get_tracks() 
+                & tr.includes_station(t_r_map(t_id).get_current().get_id()) })
+        | t_id in set dom t_r_map}
+    );
+
+    pure train_to_route_map_inv: train_route_map ==> bool 
+    train_to_route_map_inv(t_r_m) == 
+    (
+        return forall t_id in set dom t_r_m & t_r_m(t_id).get_stations()(1).get_id() = t_id;
     ); 
 
-functions 
-    -- Destinations for the given cycle. 
-    -- Create injective map train id -> station 
-    get_cycle_map: nat * train_route_map -> cycle_map
-    get_cycle_map(cycle, t_r_map) == 
+functions
+    set_2_seq_tracks: set of track -> seq of track 
+    set_2_seq_tracks(trs) == 
     (
-        {t_id |-> t_r_map(t_id).get_station_by_index(cycle) | t_id in set dom t_r_map}
+        if trs = {}
+        then []
+        else let tr in set trs 
+            in 
+                [tr] ^ set_2_seq_tracks(trs \ {tr})
     )
+    measure card trs;
 
 end timetable

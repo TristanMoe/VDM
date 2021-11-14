@@ -1,2 +1,20 @@
 class train 
+
+instance variables 
+    id : train_id; 
+
+types 
+    public train_id = nat; 
+
+operations 
+    public train: train_id ==> train 
+    train(i_d) == 
+    (
+        id := i_d; 
+    );
+
+    pure public get_id: () ==> train_id 
+    get_id() == 
+        return id; 
+        
 end train 

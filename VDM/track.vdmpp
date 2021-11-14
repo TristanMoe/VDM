@@ -1,8 +1,8 @@
 class track
 
 instance variables 
-    is_occupied: bool := false; 
-    used_by_train: train := nil; 
+    public is_occupied: bool := false; 
+    public used_by_train: train`train_id := 0; 
     public station_one: station`station_id; 
     public station_two: station`station_id;
     inv track_inv(station_one, station_two); 
@@ -18,29 +18,46 @@ operations
     )
     pre track_inv(s1, s2);
 
-    pure public get_connected_stations: () ==> set of stations 
+    pure public get_connected_stations: () ==> set of station`station_id
     get_connected_stations() == 
-        return {statione_one, station_two}; 
+        return {station_one, station_two}; 
 
     pure public includes_station: station`station_id ==> bool 
     includes_station(id) == 
         return station_one = id or station_two = id; 
 
-    public occupy_track: train ==> ()
-    occupy_track(tr) == 
+    public occupy_track: train`train_id ==> ()
+    occupy_track(t_id) == 
     (
         is_occupied := true; 
-        train := train; 
+        used_by_train := t_id; 
     )
-    pre is_occupied = false and used_by_train = nil; 
+    pre is_occupied = false and used_by_train = 0; 
 
-    public vacant_track: () ==> () 
-    vacant_track() == 
+    -- Only the train occupying the track may vacant it. 
+    public vacant_track: train`train_id ==> () 
+    vacant_track(t_id) == 
     (
         is_occupied := false; 
-        train := nil; 
+        used_by_train := 0; 
     )
-    pre is_occupied = true and used_by_train <> nil; 
+    pre is_occupied = true and used_by_train = t_id; 
+
+    pure public is_occupied: () ==> bool 
+    is_occupied() == 
+        return is_occupied; 
+
+    public print: () ==> () 
+    print() == 
+    (
+        (
+            IO`print("Track from ");
+            IO`print(station_one);
+            IO`print(" to ");
+            IO`print(station_two);
+        );
+        IO`println(""); 
+    );
 
 functions 
     track_inv: station`station_id * station`station_id -> bool 

@@ -1,40 +1,68 @@
 class schedule 
 
 instance variables
-    public schedule_actions: seq of action;
+    public schedule_actions: seq of action := [];
     public schedule_route : route; 
-    inv schedule_inv(actions, r_map); 
+    -- TODO?: inv schedule_inv(schedule_actions, schedule_route); 
 
 types 
-   public action = <ADVANCE> | <SIGNAL> | <WAIT_FOR_SIGNAL> | <FINAL>; 
+   public action = <ADVANCE> | <WAIT> | <FINAL>; 
 
 operations
-    public schedule: seq of action * route ==> schedule
-    schedule(actions, route) == 
-    (
-        atomic
-        (
-            schedule_actions := actions; 
+    public schedule: route ==> schedule
+    schedule(route) == 
+    ( 
             schedule_route := route;
-        ) 
+    );
+
+    public push_action: action ==> ()
+    push_action(act) == 
+    (
+        schedule_actions := schedule_actions ^ [act]; 
     )
-    pre schedule_inv(actions, route);
+    -- Must not be finalized yet. 
+    pre not schedule_final_inv()
+    post schedule_len_inv(schedule_actions, schedule_route);
+
+    public pop_action: () ==> action 
+    pop_action() == 
+    (
+        dcl next : action := hd schedule_actions; 
+        schedule_actions := tl schedule_actions; 
+        return next; 
+    )
+    pre len schedule_actions > 0;
 
     pure public get_actions: () ==> seq of action
     get_actions() == 
-        return actions; 
+        return schedule_actions
+    pre schedule_len_inv(schedule_actions, schedule_route) and schedule_final_inv();
 
     pure public destination_part_of_schedule: () ==> bool 
     destination_part_of_schedule() == 
-    (
-        return schedule_actions(len schedule_actions) = <FINAL> 
-    );
+        return schedule_final_inv();
 
     -- Schedule should not advance more than tracks/connections in route map. 
-    pure schedule_inv: seq of action * route ==> bool 
-    schedule_inv(act, r_m) == 
-        return len [a | a in seq act & a = <ADVANCE>] = len schedule_route.get_stations(); 
+    pure schedule_len_inv: seq of action * route ==> bool 
+    schedule_len_inv(act, r_m) == 
+        return len [a | a in seq act & a = <ADVANCE>] <= len r_m.get_stations(); 
 
+    -- If final is already in schedule, should not be allowed to add actions. 
+    pure schedule_final_inv: () ==> bool 
+    schedule_final_inv() == 
+        return if schedule_actions <> [] then hd reverse schedule_actions = <FINAL> else false;
+
+    public print: () ==> () 
+    print() == 
+    (
+        IO`print("Schedule: [ ");
+        for act in schedule_actions do 
+        (
+            IO`print(act);  
+            IO`print(" ");
+        );
+        IO`println("]");
+    ); 
 
     -- TODO: Adaptive scheduling based on missing signal for given cycle? 
     --      It should 'delay' schedule until signal is recieved. 

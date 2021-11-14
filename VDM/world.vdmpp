@@ -1,0 +1,108 @@
+class world
+
+instance variables 
+    tracks: set of track := 
+    {
+        -- Track count for both ways. 
+        -- Station 1 --> Station 2
+        -- Station 1 --> Station 2 (Two tracks between Station 1 & Station 2)
+        -- Station 1 --> Station 3
+        -- Station 2 --> Station 3
+        -- Station 2 --> Station 4 
+
+        new track(1, 2),
+        new track(1, 2), 
+        new track(1, 3),
+        
+        -- Station 2
+        new track(2, 3),
+        new track(2, 4),
+
+        -- Station 3
+        new track(3, 4)  
+    };
+
+    trains: set of train := 
+    {
+        new train(1),
+        new train(2),
+        new train(3),
+        new train(4)
+    }; 
+
+    -- Find tracks and create stations. 
+    -- Stations will reference same track if connected. 
+    stations: set of station := {};
+    routes: set of route := {}; 
+    t_table: [timetable] := nil; 
+
+
+operations 
+    public world: () ==> world
+    world() == setup_train_network(); 
+
+    setup_train_network: () ==> ()
+    setup_train_network() == 
+    (
+        dcl t_r_m: timetable`train_route_map := {|->};
+        dcl schedules: timetable`schedule_map := {|->}; 
+        IO`println("Initialized World..."); 
+        stations := stations union { new station(i, find_connected_tracks(i, tracks)) | i in set {1, ..., 4 }};
+        
+        for all stat in set stations do 
+        (
+            stat.print(); 
+            routes := routes union { new route(create_seq_station(stat, stations)) };
+        );
+
+        for all route in set routes do 
+        (
+            route.print(); 
+        );
+
+        for all t in set trains do 
+        (
+            t_r_m := t_r_m munion create_train_route_map(t.get_id(), routes);
+        ); 
+
+        t_table := new timetable(t_r_m); 
+        schedules := t_table.generate_schedules(); 
+
+        for all sch in set rng schedules do 
+        (
+            sch.print(); 
+        );
+        -- Move world print further down. 
+        IO`println(""); 
+    );
+
+    -- Input start station and the rest of all stations. 
+    pure create_seq_station: station * set of station ==> seq of station 
+    create_seq_station(c_stat, stats) == 
+    (
+        if not exists stat in set stats & {c_stat.get_id()} subset stat.get_connected_stations()
+        then return [c_stat]
+        else let stat in set stats 
+            be st {c_stat.get_id()} subset stat.get_connected_stations() 
+                in 
+                    return [c_stat] ^ create_seq_station(stat, stats \ {stat, c_stat})
+    );
+
+    pure find_connected_tracks: station`station_id * set of track ==> set of track 
+    find_connected_tracks (id, trs) == 
+    (
+        if not exists tr in set trs & tr.includes_station(id) 
+        then return {}
+        else let tr in set trs 
+            be st tr.includes_station(id) 
+                in 
+                   return {tr} union find_connected_tracks(id, trs \ {tr})
+    );
+
+    pure create_train_route_map: train`train_id * set of route ==> timetable`train_route_map
+    create_train_route_map(t_id, rts) == 
+    (
+        return { t_id |-> r | r in set rts & r.get_stations()(1).get_id() = t_id };
+    );
+
+end world 

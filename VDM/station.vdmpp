@@ -30,16 +30,48 @@ operations
         return id; 
 
     pure public get_tracks_to_station: station_id ==> set of track 
-    get_tracks_to_station(id) == 
+    get_tracks_to_station(i_d) == 
     (
-        return {tr | tr in set connected_tracks & tr.includes_station(id)}
+        return {tr | tr in set connected_tracks & tr.includes_station(i_d)}
     )
     pre exists tr in set connected_tracks & tr.includes_station(id); 
+
+    pure public get_connected_stations: () ==> set of station_id 
+    get_connected_stations() == 
+    (
+        return find_stations(id, get_tracks());
+    ); 
+
+    public print: () ==> () 
+    print() == 
+    (
+        (IO`print("Station: ");
+         IO`print(id);
+        ); 
+
+        IO`println(""); 
+
+        for all tr in set connected_tracks do
+            tr.print(); 
+    );
+
+    
+    pure find_stations: station_id * set of track ==> set of station_id  
+    find_stations(i_d, trs) == 
+    (
+        if trs = {}
+        then return {}
+        else let tr in set trs
+            in
+                return { stat_id | stat_id in set tr.get_connected_stations() & stat_id <> i_d } 
+                    union find_stations(i_d, trs \ {tr})
+
+    );
 
 functions
     -- Ensure that all tracks are connected to station.
     station_inv: station_id * set of track -> bool
-    station_inv(id, c_t) ==
-        forall tr in set c_t & id in set tr.get_connected_stations(); 
+    station_inv(i_d, c_t) ==
+        forall tr in set c_t & i_d in set tr.get_connected_stations(); 
 
 end station 

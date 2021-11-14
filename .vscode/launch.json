@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        {
+            "name": "Launch VDM Debug from world`world()",
+            "type": "vdm",
+            "request": "launch",
+            "noDebug": false,
+            "defaultName": null,
+            "command": "print new world()"
+        }
+    ]
+}
