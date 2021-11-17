@@ -2,6 +2,8 @@ class route
 
 instance variables
     public stations: seq of station := [];
+    -- Needed to loop through route and then reset it. 
+    public in_route_stations: seq of station := []; 
     inv route_inv(stations);
 
 operations 
@@ -9,6 +11,7 @@ operations
     route(s) == 
     ( 
         stations := s; 
+        in_route_stations := s; 
     )
     pre route_inv(s);
 
@@ -25,21 +28,22 @@ operations
 
     pure public get_current: () ==> station 
     get_current() ==
-        return hd stations
+        return hd in_route_stations
     pre len stations > 0; 
 
+    -- Return next en route. 
+    -- if route is [A -> B -> C] then train is at A and next is B. 
     pure public get_next: () ==> [station]
     get_next() == 
-        return if stations <> [] then hd tl stations else nil;
+        return if in_route_stations <> [] and len in_route_stations > 1 then hd tl in_route_stations else nil;
 
-    public pop_station: () ==> station  
-    pop_station() == 
+    public continue_route: () ==> ()
+    continue_route() == 
     (
-        dcl next : station := hd stations; 
-        stations := tl stations; 
-        return next; 
+        in_route_stations := tl in_route_stations; 
     )
-    pre len stations > 0; 
+    -- If only one station left, then train is at destination. 
+    pre len in_route_stations > 1; 
 
     pure public get_station_by_index: nat ==> station 
     get_station_by_index(index) ==
@@ -47,6 +51,10 @@ operations
         return stations(index)
     )
     pre index in set inds stations; 
+
+    public reset_route: () ==> () 
+    reset_route() == 
+        in_route_stations := stations; 
  
     -- Ensure that all stations in route are connected. 
     -- Loop through stations and check that tracks are connected. 

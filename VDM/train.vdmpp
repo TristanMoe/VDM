@@ -2,9 +2,17 @@ class train
 
 instance variables 
     id : train_id; 
+    train_route_schedule : [route_schedule] := nil;
+    occupied_track : [track] := nil; 
 
 types 
     public train_id = nat; 
+    
+    public route_schedule ::
+            route : route
+            schedule : schedule;
+
+    public train_route_schedule_map = map train_id to route_schedule; 
 
 operations 
     public train: train_id ==> train 
@@ -13,8 +21,65 @@ operations
         id := i_d; 
     );
 
+    public set_schedule_and_route: schedule * route ==> ()
+    set_schedule_and_route(s, r) == 
+    (
+        train_route_schedule := mk_route_schedule(r, s);    
+    )
+    pre schedule_inv(s) and schedule_route_inv(s, r);
+
     pure public get_id: () ==> train_id 
     get_id() == 
         return id; 
+
+    pure public get_route_schedule_map: () ==> train_route_schedule_map 
+    get_route_schedule_map() ==
+        return {id |-> train_route_schedule}
+    pre train_route_schedule <> nil; 
         
+    advance: () ==> () 
+    advance() == 
+    (
+        dcl current_station : station := train_route_schedule.route.get_current(); 
+        dcl next_station : station := train_route_schedule.route.get_next(); 
+
+        if occupied_track <> nil
+        then 
+        (
+            occupied_track.vacant_track(id); 
+            occupied_track := nil; 
+        );
+
+        -- Must check if track is occupied as there could be several tracks leading to station.
+        let tr in set next_station.get_tracks() 
+            be st tr.includes_station(current_station.get_id()) and not tr.is_occupied()
+                in 
+                (
+                    tr.occupy_track(id); 
+                    occupied_track := tr; 
+                    train_route_schedule.route.continue_route();
+                ); 
+
+        print_advance(current_station, next_station); 
+    )
+    pre train_route_schedule <> nil; 
+
+    pure schedule_inv: schedule ==> bool 
+    schedule_inv(s) ==
+        return s.get_owner_id() = id; 
+
+    pure schedule_route_inv: schedule * route ==> bool 
+    schedule_route_inv(s, r) ==
+        return len [a | a in seq s.get_actions() & a = <ADVANCE>] <= len r.get_stations();
+
+    print_advance: station * station ==> () 
+    print_advance(c_s, n_s) == 
+    (
+        IO`print("Advancing from station ");
+        IO`print(c_s.get_id());
+        IO`print(" from station ");
+        IO`println(n_s.get_id()); 
+    )
+    pre c_s.get_id() in set n_s.get_connected_stations(); 
+
 end train 

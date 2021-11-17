@@ -76,7 +76,9 @@ operations
         IO`println(""); 
     );
 
+    -- HELPER OPERATIONS -- 
     -- Input start station and the rest of all stations. 
+    -- Will create 'pseudo random' sequences.
     pure create_seq_station: station * set of station ==> seq of station 
     create_seq_station(c_stat, stats) == 
     (

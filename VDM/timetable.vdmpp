@@ -8,9 +8,10 @@ instance variables
     
 types 
     -- First station in route must be equal to domain value.
-    public train_route_map = map train`train_id to route;
-    public schedule_map = map train`train_id to schedule;
-    public next_track_map = map train`train_id to seq of track;
+    -- Route and Schedule must be unique for each train. 
+    public train_route_map = inmap train`train_id to route;
+    public schedule_map = inmap train`train_id to schedule;
+    public next_track_map = map train`train_id to set of track;
 
 operations
     public timetable: train_route_map ==> timetable
@@ -19,7 +20,7 @@ operations
         train_to_route_map := t_r_map; 
         for all t_id in set dom t_r_map do 
         (
-            train_to_schedule_map := train_to_schedule_map munion { t_id |-> new schedule(t_r_map(t_id)) };
+            train_to_schedule_map := train_to_schedule_map munion { t_id |-> new schedule(t_id, t_r_map(t_id)) };
         );
     ); 
 
@@ -45,23 +46,24 @@ operations
                 -- Station can have several tracks connected to same station.
                 -- Find first available and occupy.  
                 -- If no available tracks, wait for next iteration. 
-                if exists tr in seq n_t_map(t_id) & not tr.is_occupied
+                if exists tr in set n_t_map(t_id) & not tr.is_occupied
                 then 
                     (
-                        def available_tracks: set of track = { tr | tr in seq n_t_map(t_id) & not tr.is_occupied }
+                        def available_tracks: set of track = { tr | tr in set n_t_map(t_id) & not tr.is_occupied }
                             in 
                             (
                                 -- Add advance action, advance in route map and occupy track
                                 train_to_schedule_map(t_id).push_action(<ADVANCE>);
-                                train_to_route_map(t_id).pop_station(); 
+                                train_to_route_map(t_id).continue_route(); 
 
                                 if train_to_route_map(t_id).get_next() = nil 
-                                    then (
-                                        train_to_schedule_map(t_id).push_action(<FINAL>);
-                                        -- Remove train from train_route_map 
-                                        train_to_route_map := {t_id} <-: train_to_route_map
-                                    );
+                                then (
+                                    train_to_schedule_map(t_id).push_action(<FINAL>);
+                                    -- Remove train from train_route_map 
+                                    train_to_route_map := {t_id} <-: train_to_route_map
+                                );
 
+                                -- Take 'random' available track and occupy it. 
                                 let tr in set available_tracks 
                                     in 
                                     (
@@ -75,24 +77,26 @@ operations
             ); 
 
             -- Make all tracks vacant again. 
-            let t_id in set dom occupancy_map 
-                in 
-                    occupancy_map(t_id).vacant_track(t_id); 
+            for all t_id in set dom occupancy_map do
+                occupancy_map(t_id).vacant_track(t_id); 
         );         
+
+        -- Reset routes. 
+        for all t_id in set dom train_to_route_map do
+            train_to_route_map(t_id).reset_route(); 
 
         return train_to_schedule_map; 
     ); 
- 
-    -- Return tracks that will allow the train to proceed to next station. 
-    pure get_next_track_map: train_route_map ==> next_track_map
+
+    pure get_next_track_map: train_route_map ==> next_track_map 
     get_next_track_map(t_r_map) == 
     (
-        return {t_id |-> 
-            set_2_seq_tracks( {tr | tr in set t_r_map(t_id).get_next().get_tracks() 
-                & tr.includes_station(t_r_map(t_id).get_current().get_id()) })
+        return { t_id |-> {tr | tr in set t_r_map(t_id).get_next().get_tracks() 
+            & tr.includes_station(t_r_map(t_id).get_current().get_id()) }
         | t_id in set dom t_r_map}
     );
 
+    -- Train id should match first station id in route. 
     pure train_to_route_map_inv: train_route_map ==> bool 
     train_to_route_map_inv(t_r_m) == 
     (

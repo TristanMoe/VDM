@@ -3,17 +3,23 @@ class schedule
 instance variables
     public schedule_actions: seq of action := [];
     public schedule_route : route; 
+    public train_owner_id : train`train_id; 
     -- TODO?: inv schedule_inv(schedule_actions, schedule_route); 
 
 types 
    public action = <ADVANCE> | <WAIT> | <FINAL>; 
 
 operations
-    public schedule: route ==> schedule
-    schedule(route) == 
+    public schedule: train`train_id * route ==> schedule
+    schedule(t_id, route) == 
     ( 
-            schedule_route := route;
+        train_owner_id := t_id; 
+        schedule_route := route;
     );
+
+    pure public get_owner_id: () ==> train`train_id 
+    get_owner_id() == 
+        return train_owner_id; 
 
     public push_action: action ==> ()
     push_action(act) == 
@@ -55,7 +61,9 @@ operations
     public print: () ==> () 
     print() == 
     (
-        IO`print("Schedule: [ ");
+        IO`print("#"); 
+        IO`print(train_owner_id);
+        IO`print(" Schedule: [ ");
         for act in schedule_actions do 
         (
             IO`print(act);  
