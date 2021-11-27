@@ -1,0 +1,25 @@
+-- Inspiration taken from SortingPP VDM++ project. 
+-- Execute all unit tests for the given project. 
+
+-- // Unit tests // -- 
+-- Naming Convention.
+-- [test]unitofwork_scenario_expectedbehavior.
+-- unitofwork = The method being tested. 
+-- scenario = The setup or behavior being tested. 
+-- expectedbehavior = The output that is expected. 
+-- Use the automated reflection search to find test operations.
+-- All operations must begin with "test".
+class train_system_testsuite 
+operations 
+    public execute: () ==> ()
+	execute() ==
+      let tests : set of Test = {new track_tests(), new timetable_tests()},
+          ts : TestSuite = new TestSuite(tests),
+          result : TestResult = new TestResult()
+      in
+      (
+          ts.run(result);
+          IO`print(result.toString());
+      );
+
+end train_system_testsuite 

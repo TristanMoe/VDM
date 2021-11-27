@@ -1,62 +1,64 @@
-class schedule 
+class schedule is subclass of globals
 
 instance variables
-    public schedule_actions: seq of action := [];
+    public schedule_actions: seq of action_track := [];
     public schedule_route : route; 
-    public train_owner_id : train`train_id; 
+    public train_owner_id : unique_id; 
     -- TODO?: inv schedule_inv(schedule_actions, schedule_route); 
 
 types 
-   public action = <ADVANCE> | <WAIT> | <FINAL>; 
+   public action = <ADVANCE> | <RELEASE> | <WAIT> | <FINAL>; 
+   public action_track = action * [track]
+   inv mk_(act, tr) == act = <ADVANCE> => tr <> nil; 
 
 operations
-    public schedule: train`train_id * route ==> schedule
+    public schedule: unique_id * route ==> schedule
     schedule(t_id, route) == 
     ( 
         train_owner_id := t_id; 
         schedule_route := route;
     );
 
-    pure public get_owner_id: () ==> train`train_id 
+    pure public get_owner_id: () ==> unique_id
     get_owner_id() == 
         return train_owner_id; 
 
-    public push_action: action ==> ()
-    push_action(act) == 
+    public push_action: action_track ==> ()
+    push_action(act_tr) == 
     (
-        schedule_actions := schedule_actions ^ [act]; 
+        schedule_actions := schedule_actions ^ [act_tr]; 
     )
     -- Must not be finalized yet. 
     pre not schedule_final_inv()
     post schedule_len_inv(schedule_actions, schedule_route);
 
-    public pop_action: () ==> action 
+    public pop_action: () ==> action_track 
     pop_action() == 
     (
-        dcl next : action := hd schedule_actions; 
+        dcl next : action_track := hd schedule_actions; 
         schedule_actions := tl schedule_actions; 
         return next; 
     )
     pre len schedule_actions > 0;
 
-    pure public get_actions: () ==> seq of action
+    pure public get_actions: () ==> seq of action_track
     get_actions() == 
         return schedule_actions
-    pre schedule_len_inv(schedule_actions, schedule_route) and schedule_final_inv();
+    pre schedule_len_inv(schedule_actions, schedule_route);
 
     pure public destination_part_of_schedule: () ==> bool 
     destination_part_of_schedule() == 
         return schedule_final_inv();
 
     -- Schedule should not advance more than tracks/connections in route map. 
-    pure schedule_len_inv: seq of action * route ==> bool 
+    pure schedule_len_inv: seq of action_track * route ==> bool 
     schedule_len_inv(act, r_m) == 
-        return len [a | a in seq act & a = <ADVANCE>] <= len r_m.get_stations(); 
+        return len [a | a in seq act & a.#1 = <ADVANCE>] <= len r_m.get_stations(); 
 
     -- If final is already in schedule, should not be allowed to add actions. 
     pure schedule_final_inv: () ==> bool 
     schedule_final_inv() == 
-        return if schedule_actions <> [] then hd reverse schedule_actions = <FINAL> else false;
+        return if schedule_actions <> [] then (hd reverse schedule_actions).#1 = <FINAL> else false;
 
     public print: () ==> () 
     print() == 
@@ -64,9 +66,9 @@ operations
         IO`print("#"); 
         IO`print(train_owner_id);
         IO`print(" Schedule: [ ");
-        for act in schedule_actions do 
+        for act_tr in schedule_actions do 
         (
-            IO`print(act);  
+            IO`print(act_tr.#1);  
             IO`print(" ");
         );
         IO`println("]");

@@ -1,0 +1,53 @@
+-- Taken from project CMConqPP made by Peter Gorm Larsen
+class BaseThread
+	
+types
+
+public static ThreadDef ::
+  p : nat1
+  isP : bool;
+
+instance variables
+
+protected period : nat1 := 1;
+protected isPeriodic : bool := true;
+
+protected registeredSelf : BaseThread;
+protected timeStamp : TimeStamp := TimeStamp`GetInstance();
+
+operations
+
+protected BaseThread : BaseThread ==> BaseThread
+BaseThread(t) ==
+ (registeredSelf:= t;
+  timeStamp.RegisterThread(registeredSelf);
+  if(not timeStamp.IsInitialising())
+  then start(registeredSelf);  
+ );
+
+protected Step : () ==> ()
+Step() ==
+  is subclass responsibility;
+
+-- Addition to the BaseThread class 
+-- Allows thread to self-terminate by changing value.
+protected isDone : () ==> bool 
+isDone() == 
+  is subclass responsibility;
+
+thread
+ (if isPeriodic
+  then (while not isDone()
+        do 
+         (Step();
+          timeStamp.WaitRelative(period)
+         );
+         timeStamp.UnRegisterThread(registeredSelf);
+       )
+  else (Step();
+        timeStamp.WaitRelative(0);
+        timeStamp.UnRegisterThread(registeredSelf);
+       );
+ );
+
+end BaseThread

@@ -1,6 +1,7 @@
-class world
+class world is subclass of globals 
 
 instance variables 
+    public static timer_ref : TimeStamp := TimeStamp`GetInstance(); 
     tracks: set of track := 
     {
         -- Track count for both ways. 
@@ -24,11 +25,13 @@ instance variables
 
     trains: set of train := 
     {
-        new train(1),
-        new train(2),
-        new train(3),
-        new train(4)
+        new train(1, mk_BaseThread`ThreadDef(1, true)),
+        new train(2, mk_BaseThread`ThreadDef(1, true)),
+        new train(3, mk_BaseThread`ThreadDef(1, true)),
+        new train(4, mk_BaseThread`ThreadDef(1, true))
     }; 
+
+    env : [environment] := nil; 
 
     -- Find tracks and create stations. 
     -- Stations will reference same track if connected. 
@@ -38,10 +41,10 @@ instance variables
 
 
 operations 
-    public world: () ==> world
+    public world: () ==> world 
     world() == setup_train_network(); 
 
-    setup_train_network: () ==> ()
+    public setup_train_network: () ==> ()
     setup_train_network() == 
     (
         dcl t_r_m: timetable`train_route_map := {|->};
@@ -68,43 +71,61 @@ operations
         t_table := new timetable(t_r_m); 
         schedules := t_table.generate_schedules(); 
 
+        -- TODO: Assign schedules + routes to trains. 
+
         for all sch in set rng schedules do 
-        (
+        (            
             sch.print(); 
         );
+
+        for all t in set trains do 
+        (
+            t.set_schedule_and_route(schedules(t.get_id()), t_r_m(t.get_id()));
+        );
+        
+        env := new environment(trains, mk_BaseThread`ThreadDef(1, true)); 
         -- Move world print further down. 
         IO`println(""); 
     );
 
+    public run: () ==> () 
+    run () == 
+    (
+        timer_ref.DoneInitialising();
+        env.isFinished(); 
+    ); 
+
+functions 
     -- HELPER OPERATIONS -- 
     -- Input start station and the rest of all stations. 
     -- Will create 'pseudo random' sequences.
-    pure create_seq_station: station * set of station ==> seq of station 
+    public create_seq_station: station * set of station -> seq of station 
     create_seq_station(c_stat, stats) == 
     (
         if not exists stat in set stats & {c_stat.get_id()} subset stat.get_connected_stations()
-        then return [c_stat]
+        then [c_stat]
         else let stat in set stats 
             be st {c_stat.get_id()} subset stat.get_connected_stations() 
                 in 
-                    return [c_stat] ^ create_seq_station(stat, stats \ {stat, c_stat})
-    );
+                    [c_stat] ^ create_seq_station(stat, stats \ {stat, c_stat})
+    )
+    measure card ({c_stat} union stats); 
 
-    pure find_connected_tracks: station`station_id * set of track ==> set of track 
+    public find_connected_tracks: unique_id * set of track -> set of track 
     find_connected_tracks (id, trs) == 
     (
         if not exists tr in set trs & tr.includes_station(id) 
-        then return {}
+        then {}
         else let tr in set trs 
             be st tr.includes_station(id) 
                 in 
-                   return {tr} union find_connected_tracks(id, trs \ {tr})
-    );
+                   {tr} union find_connected_tracks(id, trs \ {tr})
+    )
+    measure card trs; 
 
-    pure create_train_route_map: train`train_id * set of route ==> timetable`train_route_map
+    public create_train_route_map: unique_id * set of route -> timetable`train_route_map
     create_train_route_map(t_id, rts) == 
-    (
-        return { t_id |-> r | r in set rts & r.get_stations()(1).get_id() = t_id };
-    );
+        { t_id |-> r | r in set rts & r.get_stations()(1).get_id() = t_id }
+    measure card rts; 
 
 end world 

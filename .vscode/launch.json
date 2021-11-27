@@ -6,7 +6,15 @@
             "request": "launch",
             "noDebug": false,
             "defaultName": null,
-            "command": "print new world()"
+            "command": "print new world().run()"
+        },
+        {
+            "name": "Execute Unit Tests",
+            "type": "vdm",
+            "request": "launch",
+            "noDebug": false,
+            "defaultName": null,
+            "command": "print new train_system_testsuite().execute()"
         }
     ]
 }

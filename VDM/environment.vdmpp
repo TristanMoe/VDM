@@ -1,0 +1,36 @@
+class environment is subclass of globals, BaseThread
+
+instance variables
+    busy : bool := true; 
+    trains : set of train; 
+
+operations 
+    public environment: set of train * [ThreadDef] ==> environment
+    environment(ts, t_def) == 
+    (
+        trains := ts; 
+        if t_def <> nil
+        then (period := t_def.p;
+              isPeriodic := t_def.isP;
+             );
+        BaseThread(self);
+    );
+
+    public isFinished : () ==> ()
+    isFinished () == skip;
+
+    public isDone: () ==> bool 
+    isDone() == return not busy;  
+
+    public Step: () ==> () 
+    Step() == 
+    (
+        if (forall t in set trains & t.isFinished())
+        then busy := false; 
+    );
+
+sync 
+    per isFinished => not busy; 
+    mutex(isDone); 
+
+end environment 

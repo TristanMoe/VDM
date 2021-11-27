@@ -1,4 +1,4 @@
-class timetable 
+class timetable is subclass of globals
 
 instance variables
     -- Make train_to_route_map local reference, as route uses pop actions. 
@@ -9,9 +9,9 @@ instance variables
 types 
     -- First station in route must be equal to domain value.
     -- Route and Schedule must be unique for each train. 
-    public train_route_map = inmap train`train_id to route;
-    public schedule_map = inmap train`train_id to schedule;
-    public next_track_map = map train`train_id to set of track;
+    public train_route_map = inmap unique_id to route;
+    public schedule_map = inmap unique_id to schedule;
+    public next_track_map = map unique_id to set of track;
 
 operations
     public timetable: train_route_map ==> timetable
@@ -24,6 +24,12 @@ operations
         );
     ); 
 
+    copy_train_to_route_map: train_route_map ==> train_route_map
+    copy_train_to_route_map(t_r_m) == 
+    (
+        return {t_id |-> t_r_m(t_id) | t_id in set dom t_r_m }; 
+    );
+
     -- Input is all the trains' routes. 
     -- Output is a schedule for each train that fulfills requirements. 
     -- Schedule are made of cycles, where a train can ADVANCE OR WAIT. 
@@ -32,12 +38,13 @@ operations
     public generate_schedules: () ==> schedule_map
     generate_schedules() == 
     (
+        dcl temp_train_to_route_map : train_route_map := copy_train_to_route_map(train_to_route_map); 
         while exists sch in set rng train_to_schedule_map & not sch.destination_part_of_schedule()
         do 
         (
             dcl n_t_map: next_track_map := get_next_track_map(train_to_route_map);
             -- Used to make all tracks vacant after each loop. 
-            dcl occupancy_map: inmap train`train_id to track := {|->};  
+            dcl occupancy_map: inmap unique_id to track := {|->};  
 
             for all t_id in set dom train_to_route_map 
             do 
@@ -52,16 +59,7 @@ operations
                         def available_tracks: set of track = { tr | tr in set n_t_map(t_id) & not tr.is_occupied }
                             in 
                             (
-                                -- Add advance action, advance in route map and occupy track
-                                train_to_schedule_map(t_id).push_action(<ADVANCE>);
                                 train_to_route_map(t_id).continue_route(); 
-
-                                if train_to_route_map(t_id).get_next() = nil 
-                                then (
-                                    train_to_schedule_map(t_id).push_action(<FINAL>);
-                                    -- Remove train from train_route_map 
-                                    train_to_route_map := {t_id} <-: train_to_route_map
-                                );
 
                                 -- Take 'random' available track and occupy it. 
                                 let tr in set available_tracks 
@@ -69,11 +67,25 @@ operations
                                     (
                                         tr.occupy_track(t_id); 
                                         occupancy_map := occupancy_map munion {t_id |-> tr}; 
-                                    )
+                                        -- Add advance action, advance in route map and occupy track
+                                        train_to_schedule_map(t_id).push_action(mk_(<ADVANCE>, tr));
+                                        train_to_schedule_map(t_id).push_action(mk_(<RELEASE>, tr));
+                                    );
+
+                                if train_to_route_map(t_id).get_next() = nil
+                                then (
+                                    train_to_schedule_map(t_id).push_action(mk_(<FINAL>, nil));
+                                    -- Remove train from train_route_map 
+                                    train_to_route_map := {t_id} <-: train_to_route_map
+                                );
                             ); 
                     )
                 else 
-                    train_to_schedule_map(t_id).push_action(<WAIT>);
+                (
+                    -- Wait for advance and release. 
+                    train_to_schedule_map(t_id).push_action(mk_(<WAIT>, nil));
+                    train_to_schedule_map(t_id).push_action(mk_(<WAIT>, nil));
+                );
             ); 
 
             -- Make all tracks vacant again. 
@@ -82,8 +94,8 @@ operations
         );         
 
         -- Reset routes. 
-        for all t_id in set dom train_to_route_map do
-            train_to_route_map(t_id).reset_route(); 
+        for all t_id in set dom temp_train_to_route_map do
+            temp_train_to_route_map(t_id).reset_route(); 
 
         return train_to_schedule_map; 
     ); 

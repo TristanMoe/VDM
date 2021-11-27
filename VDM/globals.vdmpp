@@ -1,0 +1,6 @@
+class globals 
+
+types 
+    public unique_id = nat;
+
+end globals 

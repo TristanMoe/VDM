@@ -1,0 +1,10 @@
+class timetable_tests is subclass of TestCase, globals 
+
+instance variables 
+
+operations 
+
+functions 
+
+
+end timetable_tests 

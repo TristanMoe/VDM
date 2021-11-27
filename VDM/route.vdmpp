@@ -1,4 +1,4 @@
-class route 
+class route is subclass of globals
 
 instance variables
     public stations: seq of station := [];
@@ -19,7 +19,7 @@ operations
     get_stations() ==
         return stations; 
 
-    pure public get_station_by_id: station`station_id ==> station 
+    pure public get_station_by_id: unique_id ==> station 
     get_station_by_id(id) == 
     (
         return stations(id) 
@@ -35,7 +35,7 @@ operations
     -- if route is [A -> B -> C] then train is at A and next is B. 
     pure public get_next: () ==> [station]
     get_next() == 
-        return if in_route_stations <> [] and len in_route_stations > 1 then hd tl in_route_stations else nil;
+        return if in_route_stations <> [] and len in_route_stations > 1 then hd (tl in_route_stations) else nil;
 
     public continue_route: () ==> ()
     continue_route() == 
@@ -43,7 +43,7 @@ operations
         in_route_stations := tl in_route_stations; 
     )
     -- If only one station left, then train is at destination. 
-    pre len in_route_stations > 1; 
+    pre len in_route_stations >= 1; 
 
     pure public get_station_by_index: nat ==> station 
     get_station_by_index(index) ==

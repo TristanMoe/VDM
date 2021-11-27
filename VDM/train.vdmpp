@@ -1,24 +1,28 @@
-class train 
+class train is subclass of globals, BaseThread
 
 instance variables 
-    id : train_id; 
+    id : unique_id; 
     train_route_schedule : [route_schedule] := nil;
     occupied_track : [track] := nil; 
+    is_finished : bool := false; 
 
 types 
-    public train_id = nat; 
-    
     public route_schedule ::
             route : route
             schedule : schedule;
 
-    public train_route_schedule_map = map train_id to route_schedule; 
+    public train_route_schedule_map = inmap unique_id to route_schedule
 
 operations 
-    public train: train_id ==> train 
-    train(i_d) == 
+    public train: unique_id * [ThreadDef] ==> train 
+    train(i_d, t_def) == 
     (
         id := i_d; 
+        if t_def <> nil
+        then (period := t_def.p;
+            isPeriodic := t_def.isP;
+       );
+        BaseThread(self);        
     );
 
     public set_schedule_and_route: schedule * route ==> ()
@@ -28,7 +32,7 @@ operations
     )
     pre schedule_inv(s) and schedule_route_inv(s, r);
 
-    pure public get_id: () ==> train_id 
+    pure public get_id: () ==> unique_id 
     get_id() == 
         return id; 
 
@@ -36,33 +40,55 @@ operations
     get_route_schedule_map() ==
         return {id |-> train_route_schedule}
     pre train_route_schedule <> nil; 
-        
-    advance: () ==> () 
-    advance() == 
+
+    -- TODO: For some reason it will not take tuple. 
+    advance: schedule`action * track ==> () 
+    advance(act, tr) == 
     (
         dcl current_station : station := train_route_schedule.route.get_current(); 
-        dcl next_station : station := train_route_schedule.route.get_next(); 
+        dcl next_station : [station] := train_route_schedule.route.get_next();
+        tr.occupy_track(id); 
+        occupied_track := tr; 
 
-        if occupied_track <> nil
-        then 
-        (
-            occupied_track.vacant_track(id); 
-            occupied_track := nil; 
-        );
-
-        -- Must check if track is occupied as there could be several tracks leading to station.
-        let tr in set next_station.get_tracks() 
-            be st tr.includes_station(current_station.get_id()) and not tr.is_occupied()
-                in 
-                (
-                    tr.occupy_track(id); 
-                    occupied_track := tr; 
-                    train_route_schedule.route.continue_route();
-                ); 
+        train_route_schedule.route.continue_route();        
 
         print_advance(current_station, next_station); 
     )
-    pre train_route_schedule <> nil; 
+    pre train_route_schedule <> nil and act = <ADVANCE> 
+        and len train_route_schedule.route.get_stations() > 2;
+
+    wait: schedule`action ==> ()
+    wait(act) == 
+    (
+        dcl current_station : station := train_route_schedule.route.get_current();
+
+        print_wait(current_station); 
+    )
+    pre train_route_schedule <> nil and act = <WAIT>;
+
+    final: schedule`action ==> () 
+    final(act) == 
+    (
+        dcl current_station : station := train_route_schedule.route.get_current();
+        print_final(current_station); 
+
+        -- Unregister thread.
+        --TimeStamp`GetInstance().UnRegisterThread(registeredSelf); 
+        is_finished := true; 
+    )
+    pre train_route_schedule <> nil 
+        and act = <FINAL> 
+        and len train_route_schedule.schedule.get_actions() = 0;
+
+    release: schedule`action ==> ()
+    release(act) == 
+    (
+        -- Use cycle to 'deoccupy' track 
+        IO`println("Releasing track...");
+        occupied_track.vacant_track(id); 
+        occupied_track := nil; 
+    )
+    pre occupied_track <> nil and act = <RELEASE>; 
 
     pure schedule_inv: schedule ==> bool 
     schedule_inv(s) ==
@@ -70,16 +96,77 @@ operations
 
     pure schedule_route_inv: schedule * route ==> bool 
     schedule_route_inv(s, r) ==
-        return len [a | a in seq s.get_actions() & a = <ADVANCE>] <= len r.get_stations();
+        return len [a | a in seq s.get_actions() & a.#1 = <ADVANCE>] <= len r.get_stations();
 
-    print_advance: station * station ==> () 
+    -- Step through the schedule actions
+    public Step : () ==> ()
+    Step() ==
+    (
+        dcl act_tr : schedule`action_track := train_route_schedule.schedule.pop_action(); 
+
+        cases act_tr.#1 :
+        <ADVANCE> -> advance(act_tr.#1, act_tr.#2),
+        <RELEASE> -> release(act_tr.#1),
+        <WAIT> -> wait(act_tr.#1),
+        <FINAL> -> final(act_tr.#1)
+        end;
+    )
+    pre len train_route_schedule.schedule.get_actions() > 0 and not is_finished; 
+
+    public isDone: () ==> bool 
+    isDone() == return isFinished(); 
+
+
+    public isFinished : () ==> bool
+    isFinished () == return is_finished; 
+
+    -- Needed to clear all tracks each cycle. 
+    public isCycleFinished : () ==> ()
+    isCycleFinished () == skip; 
+
+    print_advance: station * [station] ==> () 
     print_advance(c_s, n_s) == 
     (
-        IO`print("Advancing from station ");
+        IO`print("Train "); 
+        IO`print(id);
+        IO`print(" Advancing from station ");
         IO`print(c_s.get_id());
-        IO`print(" from station ");
+
+        if n_s <> nil 
+        then 
+        (
+        IO`print(" to station ");
         IO`println(n_s.get_id()); 
-    )
-    pre c_s.get_id() in set n_s.get_connected_stations(); 
+        )
+        else 
+        (
+            IO`println(""); 
+        );
+    );
+
+    print_wait: station ==> () 
+    print_wait(s) == 
+    (
+        IO`print("Train "); 
+        IO`print(id);
+        IO`print(" Waiting at station: ");
+        IO`println(s.get_id()); 
+    );
+
+    print_final: station ==> () 
+    print_final(s) == 
+    ( 
+        IO`print("Train "); 
+        IO`print(id);
+        IO`print(" Arrived at final destination: ");
+        IO`println(s.get_id()); 
+    ); 
+
+sync 
+    mutex (Step); 
+    mutex (isFinished); 
+    -- Step until all actions have been executed. 
+    -- Cannot have underscore using per keyword. 
+    --per isFinished => len train_route_schedule.schedule.get_actions() = 0; 
 
 end train 

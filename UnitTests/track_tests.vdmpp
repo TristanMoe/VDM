@@ -1,0 +1,106 @@
+class track_tests is subclass of TestCase, globals
+
+instance variables 
+    track_uut : [track] := nil;
+
+operations
+    public setUp: () ==> () 
+    setUp() == skip; 
+
+    public tearDown: () ==> ()
+    tearDown() == skip;
+
+    public testGetConnectedStations_checkValidity_validConnections: () ==> ()
+    testGetConnectedStations_checkValidity_validConnections() == 
+    (
+        dcl id1 : unique_id := 1;
+        dcl id2 : unique_id := 2; 
+        track_uut := new track(id1, id2);
+        def c_s = track_uut.get_connected_stations() 
+        in 
+        (
+            assertTrue(id1 in set c_s); 
+            assertTrue(id2 in set c_s); 
+            assertTrue(card c_s = 2); 
+        );
+    );
+
+    public testIncludesStation_checkValidity_validIncludedStations: () ==> () 
+    testIncludesStation_checkValidity_validIncludedStations() == 
+    ( 
+        dcl id1 : unique_id := 1;
+        dcl id2 : unique_id := 2; 
+        track_uut := new track(id1, id2);
+        assertTrue(track_uut.includes_station(id1));
+        assertTrue(track_uut.includes_station(id2)); 
+    ); 
+
+    public testIncludesStation_inputInvalidStation_validIncludedStations: () ==> () 
+    testIncludesStation_inputInvalidStation_validIncludedStations() == 
+    ( 
+        dcl id1 : unique_id := 1;
+        dcl id2 : unique_id := 2; 
+        dcl invalid_ids: set of unique_id := {id2, ..., 10}; 
+        track_uut := new track(id1, id2);
+        let id in set invalid_ids 
+            in
+            (
+                assertFalse(track_uut.includes_station(id));
+            );
+    ); 
+
+    public testTrackInv_validInput_returnsTrue: () ==> () 
+    testTrackInv_validInput_returnsTrue() == 
+    (
+        dcl id1 : unique_id := 1;
+        dcl id2 : unique_id := 2; 
+        assertTrue(track`track_inv(id1, id2)); 
+    );
+
+    public testTrackInv_invalidInput_returnsFalse: () ==> () 
+    testTrackInv_invalidInput_returnsFalse() == 
+    (
+        dcl id1 : unique_id := 1;
+        dcl id2 : unique_id := 1; 
+        assertTrue(track`track_inv(id1, id2)); 
+    );
+
+    public testVacantInv_validOwnerVacants_returnsTrue: () ==> ()
+    testVacantInv_validOwnerVacants_returnsTrue() == 
+    (
+        dcl is_occupied : bool := true; 
+        dcl owner_id : unique_id := 1;
+        dcl vacanter_requester_id : unique_id := 1; 
+        assertTrue(track`vacant_inv(is_occupied, owner_id, vacanter_requester_id));
+    );
+
+    public testVacantInv_invalidOwnerVacants_returnsFalse: () ==> ()
+    testVacantInv_invalidOwnerVacants_returnsFalse() == 
+    (
+        dcl is_occupied : bool := true; 
+        dcl owner_id : unique_id := 1;
+        dcl vacanter_requester_id : unique_id := 2; 
+        assertFalse(track`vacant_inv(is_occupied, owner_id, vacanter_requester_id));
+    );
+
+functions 
+    -- Cannot directly test pre-post conditions .
+    -- Test functions connected instead. 
+    public track_input: nat * nat -> bool 
+    track_input(id1, id2) == track`track_inv(id1, id2)
+
+traces 
+    trackInv_validInput_returnsTrue : 
+        let id1, id2 in set {1, ..., 10} be st id1 <> id2 
+            in
+            (
+                track_input(id1, id2); 
+            );
+
+    trackInv_invalidInput_returnsFalse : 
+    let id1, id2 in set {1, ..., 5} be st id1 = id2 
+        in
+        (
+            track_input(id1, id2); 
+        );
+end track_tests 
