@@ -95,37 +95,4 @@ operations
         env.isFinished(); 
     ); 
 
-functions 
-    -- HELPER OPERATIONS -- 
-    -- Input start station and the rest of all stations. 
-    -- Will create 'pseudo random' sequences.
-    public create_seq_station: station * set of station -> seq of station 
-    create_seq_station(c_stat, stats) == 
-    (
-        if not exists stat in set stats & {c_stat.get_id()} subset stat.get_connected_stations()
-        then [c_stat]
-        else let stat in set stats 
-            be st {c_stat.get_id()} subset stat.get_connected_stations() 
-                in 
-                    [c_stat] ^ create_seq_station(stat, stats \ {stat, c_stat})
-    )
-    measure card ({c_stat} union stats); 
-
-    public find_connected_tracks: unique_id * set of track -> set of track 
-    find_connected_tracks (id, trs) == 
-    (
-        if not exists tr in set trs & tr.includes_station(id) 
-        then {}
-        else let tr in set trs 
-            be st tr.includes_station(id) 
-                in 
-                   {tr} union find_connected_tracks(id, trs \ {tr})
-    )
-    measure card trs; 
-
-    public create_train_route_map: unique_id * set of route -> timetable`train_route_map
-    create_train_route_map(t_id, rts) == 
-        { t_id |-> r | r in set rts & r.get_stations()(1).get_id() = t_id }
-    measure card rts; 
-
 end world 

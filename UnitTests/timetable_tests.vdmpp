@@ -1,10 +1,48 @@
 class timetable_tests is subclass of TestCase, globals 
 
 instance variables 
+    tracks: set of track := 
+    {
+        new track(1, 2),
+        new track(1, 2), 
+        new track(1, 3),
+        new track(2, 3),
+        new track(2, 4),
+        new track(3, 4)  
+    };
+
+    stations: set of station := {};
+    routes: set of route := {}; 
+    timetable_uut: [timetable] := nil; 
 
 operations 
+        -- Run before each test. 
+    public setUp: () ==> () 
+    setUp() == 
+    (
+        -- Prepare for train route map
+        dcl t_r_m: timetable`train_route_map := {|->};
+        -- Create Stations.
+        stations := stations union { new station(i, find_connected_tracks(i, tracks)) | i in set {1, ..., 4 }};
+        -- Create routes.
+        for all stat in set stations do 
+        (
+            stat.print(); 
+            routes := routes union { new route(create_seq_station(stat, stations)) };
+        );
+        -- Generate train ids and connect to routes. 
+        -- Must match track id references. 
+        for all t in set {1, ..., 4} do 
+        (
+            t_r_m := t_r_m munion create_train_route_map(t, routes);
+        ); 
 
-functions 
+        -- Create timetable.
+        timetable_uut := new timetable(t_r_m); 
+    );
+    
+    public tearDown: () ==> ()
+    tearDown() == skip;
 
 
 end timetable_tests 

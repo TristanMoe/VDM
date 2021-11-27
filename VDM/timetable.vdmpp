@@ -98,7 +98,8 @@ operations
             temp_train_to_route_map(t_id).reset_route(); 
 
         return train_to_schedule_map; 
-    ); 
+    )
+    post generate_schedules_inv(get_schedule_action_tracks(RESULT)); 
 
     pure get_next_track_map: train_route_map ==> next_track_map 
     get_next_track_map(t_r_map) == 
@@ -115,16 +116,33 @@ operations
         return forall t_id in set dom t_r_m & t_r_m(t_id).get_stations()(1).get_id() = t_id;
     ); 
 
-functions
-    set_2_seq_tracks: set of track -> seq of track 
-    set_2_seq_tracks(trs) == 
+    pure get_schedule_action_tracks: schedule_map ==> set of seq of schedule`action_track 
+    get_schedule_action_tracks(s_m) == 
     (
-        if trs = {}
-        then []
-        else let tr in set trs 
-            in 
-                [tr] ^ set_2_seq_tracks(trs \ {tr})
+        return {s.get_actions() | s in set rng s_m }; 
     )
-    measure card trs;
+
+functions 
+    -- Must of the schedule criteria is handled by the schedule class.
+    -- However the timetable must ensure that no inconsistencies occur between
+    -- the generated schedules. 
+    public generate_schedules_inv: set of seq of schedule`action_track -> bool 
+    generate_schedules_inv(s_a) == 
+        forall s1, s2 in set s_a & s1 <> s2 => (forall b in seq check_schedule_sequence(s1, s2) & b = true); 
+
+    private check_schedule_sequence: seq of schedule`action_track * seq of schedule`action_track -> seq of bool 
+    check_schedule_sequence(s1, s2) == 
+        -- Sequeneces can have varying lengths depending on destination etc. 
+        if s1 = [] or s2 = [] or (hd s1).#1 <> <ADVANCE> or (hd s2).#1 <> <ADVANCE> 
+        then [true]
+        else [check_advance_action(hd s1, hd s2)] ^ check_schedule_sequence(tl s1, tl s2)
+    -- Recursion shoud stop based on the shortest sequence. 
+    measure if len s1 < len s2 then len s1 else len s2; 
+
+    -- If the advance, they must not hold reference to same track. 
+    private check_advance_action: schedule`action_track * schedule`action_track -> bool 
+    check_advance_action(a1, a2) == 
+        a1.#2 <> a2.#2 
+    pre a1.#1 = <ADVANCE> and a1.#1 = <ADVANCE>;
 
 end timetable
