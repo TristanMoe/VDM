@@ -1,48 +1,53 @@
 class timetable_tests is subclass of TestCase, globals 
 
 instance variables 
-    tracks: set of track := 
+    tr1 : track := new track(1, 2); 
+    tr2 : track := new track(1, 2); 
+    tr3 : track := new track(1, 3);
+    tr4 : track := new track(2, 3);
+    tr5 : track := new track(2, 4);
+    tr6 : track := new track(3, 4); 
+
+    tracks : set of track := {tr1, tr2, tr3, tr4, tr5, tr6}; 
+
+    -- Setup for simple test of schedules. 
+    at1 : seq of schedule`action_track := [ mk_(<ADVANCE>, tr1), mk_(<RELEASE>, nil)];
+    at2 : seq of schedule`action_track := [ mk_(<ADVANCE>, tr2), mk_(<RELEASE>, nil)];
+    at3 : seq of schedule`action_track := [ mk_(<ADVANCE>, tr3), mk_(<RELEASE>, nil)];
+    at4 : seq of schedule`action_track := [ mk_(<ADVANCE>, tr4), mk_(<RELEASE>, nil)];
+     
+    train_to_action_track : map globals`unique_id to seq of schedule`action_track := 
     {
-        new track(1, 2),
-        new track(1, 2), 
-        new track(1, 3),
-        new track(2, 3),
-        new track(2, 4),
-        new track(3, 4)  
-    };
+        1 |-> at1, 
+        2 |-> at2,
+        3 |-> at3, 
+        4 |-> at4 
+    }; 
 
-    stations: set of station := {};
-    routes: set of route := {}; 
-    timetable_uut: [timetable] := nil; 
+operations     
 
-operations 
-        -- Run before each test. 
-    public setUp: () ==> () 
-    setUp() == 
+    protected runTest: () ==> () 
+    runTest() == 
     (
-        -- Prepare for train route map
-        dcl t_r_m: timetable`train_route_map := {|->};
-        -- Create Stations.
-        stations := stations union { new station(i, find_connected_tracks(i, tracks)) | i in set {1, ..., 4 }};
-        -- Create routes.
-        for all stat in set stations do 
-        (
-            stat.print(); 
-            routes := routes union { new route(create_seq_station(stat, stations)) };
-        );
-        -- Generate train ids and connect to routes. 
-        -- Must match track id references. 
-        for all t in set {1, ..., 4} do 
-        (
-            t_r_m := t_r_m munion create_train_route_map(t, routes);
-        ); 
+        testGenerateScheduleInv_validSchedules_returnsTrue(); 
+        testGenerateScheduleInv_invalidSchedules_returnsFalse(); 
 
-        -- Create timetable.
-        timetable_uut := new timetable(t_r_m); 
+    ); 
+
+    public testGenerateScheduleInv_validSchedules_returnsTrue: () ==> () 
+    testGenerateScheduleInv_validSchedules_returnsTrue() == 
+    (
+        assertTrue(timetable`generate_schedules_inv(train_to_action_track)); 
     );
-    
-    public tearDown: () ==> ()
-    tearDown() == skip;
 
+    public testGenerateScheduleInv_invalidSchedules_returnsFalse: () ==> () 
+    testGenerateScheduleInv_invalidSchedules_returnsFalse() == 
+    (
+        -- Add reference to already occupied track. 
+        dcl at_duplicate : map globals`unique_id to seq of schedule`action_track := {5 |-> [ mk_(<ADVANCE>, tr1), mk_(<RELEASE>, nil)]};
+        train_to_action_track := train_to_action_track munion at_duplicate; 
+
+        assertFalse(timetable`generate_schedules_inv(train_to_action_track)); 
+    );
 
 end timetable_tests 

@@ -99,7 +99,7 @@ operations
 
         return train_to_schedule_map; 
     )
-    post generate_schedules_inv(get_schedule_action_tracks(RESULT)); 
+    post generate_schedules_inv(get_seq_schedule_actions(RESULT)); 
 
     pure get_next_track_map: train_route_map ==> next_track_map 
     get_next_track_map(t_r_map) == 
@@ -116,23 +116,23 @@ operations
         return forall t_id in set dom t_r_m & t_r_m(t_id).get_stations()(1).get_id() = t_id;
     ); 
 
-    pure get_schedule_action_tracks: schedule_map ==> set of seq of schedule`action_track 
-    get_schedule_action_tracks(s_m) == 
+    pure get_seq_schedule_actions: schedule_map ==> map unique_id to seq of schedule`action_track 
+    get_seq_schedule_actions(s_m) == 
     (
-        return {s.get_actions() | s in set rng s_m }; 
-    )
+        return { t_id |-> s_m(t_id).get_actions() | t_id in set dom s_m };
+    );
 
 functions 
     -- Must of the schedule criteria is handled by the schedule class.
     -- However the timetable must ensure that no inconsistencies occur between
     -- the generated schedules. 
-    public generate_schedules_inv: set of seq of schedule`action_track -> bool 
+    public generate_schedules_inv: map unique_id to seq of schedule`action_track -> bool 
     generate_schedules_inv(s_a) == 
-        forall s1, s2 in set s_a & s1 <> s2 => (forall b in seq check_schedule_sequence(s1, s2) & b = true); 
+        forall t_id1, t_id2 in set dom s_a & t_id1 <> t_id2 => (forall b in seq check_schedule_sequence(s_a(t_id1), s_a(t_id2)) & b = true); 
 
-    private check_schedule_sequence: seq of schedule`action_track * seq of schedule`action_track -> seq of bool 
+    check_schedule_sequence: seq of schedule`action_track * seq of schedule`action_track -> seq of bool 
     check_schedule_sequence(s1, s2) == 
-        -- Sequeneces can have varying lengths depending on destination etc. 
+        -- Sequences can have varying lengths depending on destination etc. 
         if s1 = [] or s2 = [] or (hd s1).#1 <> <ADVANCE> or (hd s2).#1 <> <ADVANCE> 
         then [true]
         else [check_advance_action(hd s1, hd s2)] ^ check_schedule_sequence(tl s1, tl s2)
@@ -140,7 +140,7 @@ functions
     measure if len s1 < len s2 then len s1 else len s2; 
 
     -- If the advance, they must not hold reference to same track. 
-    private check_advance_action: schedule`action_track * schedule`action_track -> bool 
+    check_advance_action: schedule`action_track * schedule`action_track -> bool 
     check_advance_action(a1, a2) == 
         a1.#2 <> a2.#2 
     pre a1.#1 = <ADVANCE> and a1.#1 = <ADVANCE>;

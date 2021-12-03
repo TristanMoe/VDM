@@ -1,28 +1,37 @@
 @startuml
+title "Cycle Diagram for Multithreaded Trains"
 clock clk with period 1
 concise "Train 1" as T1 
 concise "Train 2" as T2 
 
 @0
-T1 is A 
-T2 is A 
+T1 is "S1"
+T2 is "S1"
 
 @1
 T2 -> T1 : WAIT 
-T1 is SIGNAL 
-T2 is X 
+T1 is A 
+T2 is W
 
 @2 
-T1 -> T2 : SIGNAL
-T1 is B 
-T2 is X 
+T2@3 <-> @1 : {2 Cycle Delay}
+T1 is R 
+T2 is W
 
 @3 
-T1 is C 
-T2 is B 
+T1 -> T2 : RELEASE
+T1 is S2
+T2 is S1 
 
 @4
-T2@4 <-> @3 : {1 Cycle Delay}
-T1 is C 
-T2 is C 
+T1 is A 
+T2 is A 
+
+@5
+T1 is R
+T2 is R 
+
+@6
+T1 is S3
+T2 is S2
 @enduml

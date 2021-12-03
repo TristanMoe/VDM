@@ -8,7 +8,7 @@ instance variables
 
 operations 
     public route: seq of station ==> route
-    route(s) == 
+        route(s) == 
     ( 
         stations := s; 
         in_route_stations := s; 

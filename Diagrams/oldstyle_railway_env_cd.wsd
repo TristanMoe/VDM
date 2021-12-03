@@ -1,0 +1,28 @@
+@startuml
+skinparam Shadowing false
+
+class World {
+    + setup_railway()
+    + run() 
+}
+class Environment {
+    # Step() 
+    # isDone()
+    + isFinished() 
+} 
+class BaseThread {
+    # Step() 
+    # isDone() 
+}
+class Train {
+    # Step()
+    # isDone() 
+    + isFinished() 
+}
+
+World "1" --* "1" Environment : env 
+World "1" --* "1..*" Train : trains
+BaseThread <|-- Environment
+BaseThread <|-- Train  
+
+@enduml

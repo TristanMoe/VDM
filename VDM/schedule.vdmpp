@@ -27,7 +27,15 @@ operations
     push_action(act_tr) == 
     (
         schedule_actions := schedule_actions ^ [act_tr]; 
+    );
+
+    -- ONLY USED FOR TESTING! 
+    public push_actions: seq of action_track ==> ()
+    push_actions(act_trs) == 
+    (
+        schedule_actions := schedule_actions ^ act_trs; 
     )
+
     -- Must not be finalized yet. 
     pre not schedule_final_inv()
     post schedule_len_inv(schedule_actions, schedule_route);

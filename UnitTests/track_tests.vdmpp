@@ -10,6 +10,20 @@ operations
     public tearDown: () ==> ()
     tearDown() == skip;
 
+    protected runTest: () ==> () 
+    runTest() == 
+    (
+        testGetConnectedStations_checkValidity_validConnections(); 
+        testIncludesStation_checkValidity_validIncludedStations(); 
+        testIncludesStation_inputInvalidStation_validIncludedStations(); 
+        testTrackInv_validInput_returnsTrue(); 
+        testTrackInv_invalidInput_returnsFalse(); 
+        testVacantInv_validOwnerVacants_returnsTrue(); 
+        testTrackInv_invalidInput_returnsFalse(); 
+        testVacantInv_validOwnerVacants_returnsTrue(); 
+        testVacantInv_invalidOwnerVacants_returnsFalse(); 
+    ); 
+    
     public testGetConnectedStations_checkValidity_validConnections: () ==> ()
     testGetConnectedStations_checkValidity_validConnections() == 
     (
@@ -40,7 +54,7 @@ operations
     ( 
         dcl id1 : unique_id := 1;
         dcl id2 : unique_id := 2; 
-        dcl invalid_ids: set of unique_id := {id2, ..., 10}; 
+        dcl invalid_ids: set of unique_id := {id2 + 1, ..., 10}; 
         track_uut := new track(id1, id2);
         let id in set invalid_ids 
             in
@@ -62,7 +76,7 @@ operations
     (
         dcl id1 : unique_id := 1;
         dcl id2 : unique_id := 1; 
-        assertTrue(track`track_inv(id1, id2)); 
+        assertFalse(track`track_inv(id1, id2)); 
     );
 
     public testVacantInv_validOwnerVacants_returnsTrue: () ==> ()

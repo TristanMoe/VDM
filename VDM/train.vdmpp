@@ -116,13 +116,8 @@ operations
     public isDone: () ==> bool 
     isDone() == return isFinished(); 
 
-
     public isFinished : () ==> bool
     isFinished () == return is_finished; 
-
-    -- Needed to clear all tracks each cycle. 
-    public isCycleFinished : () ==> ()
-    isCycleFinished () == skip; 
 
     print_advance: station * [station] ==> () 
     print_advance(c_s, n_s) == 

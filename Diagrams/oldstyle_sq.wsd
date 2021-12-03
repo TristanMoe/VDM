@@ -2,7 +2,7 @@
 skinparam Shadowing false
 
 class Train {
-    # Step() 
+    + step()
     - advance(act : action) 
     - wait(act : action) 
     - release(act : action)
@@ -28,14 +28,19 @@ class Route {
 }
 
 class Timetable {
-    + generateTimetable()
+    + generate_timetable()
 } 
 
-class BaseThread {
-    # Step()
+class Environment {
+    + step()
+    + is_finished()
 }
 
-BaseThread <|-- Train 
+class World {
+    + setup_railway_system()
+    + run()
+}
+
 Train "1" --> "0..1" Track : occupied_track
 Station "1" --> "1..*" Track : connected_tracks
 Route "1" --> "1..* [O]" Station: stations 
@@ -43,5 +48,10 @@ Timetable "{train_id}1..*" --> "1..*" Route : train_to_route_map
 Timetable "{train_id}1..*" --> "1..*" Schedule : train_to_schedule_map
 Train "{train_id}1" --> "1" Route : train_route_schedule
 Train "{train_id}1" --> "1" Schedule : train_route_schedule
+World "1" --> "1" Environment: env 
+World "1" -> "1..*" Track: tracks 
+World "1" -> "1..*" Station: stations 
+World "1" -> "1..*" Train: trains 
+Environment "1" -> "1..*" Train: trains 
 
 @enduml

@@ -13,13 +13,13 @@ class train_system_testsuite
 operations 
     public execute: () ==> ()
 	execute() ==
-      let tests : set of Test = {new track_tests(), new timetable_tests()},
-          ts : TestSuite = new TestSuite(tests),
-          result : TestResult = new TestResult()
-      in
-      (
-          ts.run(result);
-          IO`print(result.toString());
-      );
-
+        let ts : TestSuite = new TestSuite(),
+            result : TestResult = new TestResult()
+        in
+        (
+            ts.addTest(new track_tests());
+			ts.addTest(new timetable_tests());
+            ts.run(result);
+            IO`print(result.toString());
+        );
 end train_system_testsuite 
